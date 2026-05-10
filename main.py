@@ -16,7 +16,7 @@ app.add_middleware(
 
 @app.get("/")
 def home():
-    return {"message": "API is Live - Testing Final Configuration"}
+    return {"message": "API is Live using IDM-VTON Model"}
 
 @app.post("/tryon")
 async def try_on(person: UploadFile = File(...), garment: UploadFile = File(...)):
@@ -30,26 +30,29 @@ async def try_on(person: UploadFile = File(...), garment: UploadFile = File(...)
         with open(garment_path, "wb") as f:
             shutil.copyfileobj(garment.file, f)
 
-        client = Client("Kwai-Kolors/Kolors-Virtual-Try-On")
+        # التغيير هنا: استخدام موديل IDM-VTON المستقر
+        client = Client("yisol/IDM-VTON")
         
-        # التعديل "الجوكر": بعت الصورتين في الأول وبعدين 3 قيم افتراضية
-        # ده الترتيب الأكثر شيوعاً لموديلات الـ Try-on اللي بتطلع Index Error
         result = client.predict(
-            handle_file(person_path),   # الشخص
-            handle_file(garment_path),  # اللبس
-            handle_file(person_path),   # الماسك (بنبعت صورة الشخص كبديل)
-            0,                          # Seed
-            True,                       # Agreement
-            fn_index=0
+            dict={"background": handle_file(person_path), "layers": [], "composite": None}, # صورة الشخص
+            garm_img=handle_file(garment_path), # صورة اللبس
+            garment_des="fashion item",         # وصف بسيط
+            is_checked=True,                    # الموافقة
+            is_checked_det=True,                # الموافقة على التفاصيل
+            denoise_steps=30,                   # جودة الصورة
+            seed=42,                            # Seed ثابت للنتيجة
+            api_name="/predict"                 # اسم الـ API المستقر
         )
 
         if os.path.exists(person_path): os.remove(person_path)
         if os.path.exists(garment_path): os.remove(garment_path)
 
-        return {"status": "success", "result": result}
+        # الموديل ده بيرجع قائمة، النتيجة هي أول عنصر
+        final_image_url = result[0] if isinstance(result, list) else result
+
+        return {"status": "success", "result": final_image_url}
 
     except Exception as e:
         if os.path.exists(person_path): os.remove(person_path)
         if os.path.exists(garment_path): os.remove(garment_path)
-        # هنرجع رسالة الخطأ كاملة عشان لو فشلت نعرف السبب فين بالظبط
         return {"status": "error", "message": str(e)}
