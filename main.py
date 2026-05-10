@@ -16,13 +16,13 @@ app.add_middleware(
 
 @app.get("/")
 def home():
-    return {"message": "API is checking model structure..."}
+    return {"message": "Final attempt with positional arguments"}
 
 @app.post("/tryon")
 async def try_on(person: UploadFile = File(...), garment: UploadFile = File(...)):
     session_id = str(uuid.uuid4())
-    person_path = f"person_{session_id}.jpg"
-    garment_path = f"garment_{session_id}.jpg"
+    person_path = f"p_{session_id}.jpg"
+    garment_path = f"g_{session_id}.jpg"
 
     try:
         with open(person_path, "wb") as f:
@@ -32,14 +32,15 @@ async def try_on(person: UploadFile = File(...), garment: UploadFile = File(...)
 
         client = Client("Kwai-Kolors/Kolors-Virtual-Try-On")
         
-        # التعديل الجديد: استخدام api_name="/tryon" 
-        # ده بيخلي جرايدو يبعت البيانات للمكان الصح بالأسامي الصح تلقائياً
+        # التعديل النهائي والمؤكد بإذن الله:
+        # إرسال 4 مدخلات فقط بالترتيب (شخص، لبس، seed، موافقة)
+        # وبدون استخدام api_name، فقط fn_index=0
         result = client.predict(
-            person_img=handle_file(person_path),
-            garment_img=handle_file(garment_path),
-            seed=0,
-            is_checked=True,
-            api_name="/tryon"
+            handle_file(person_path),
+            handle_file(garment_path),
+            0,
+            True,
+            fn_index=0
         )
 
         if os.path.exists(person_path): os.remove(person_path)
