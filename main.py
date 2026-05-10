@@ -16,7 +16,7 @@ app.add_middleware(
 
 @app.get("/")
 def home():
-    return {"message": "Final attempt with positional arguments"}
+    return {"message": "API is Live - Testing Final Configuration"}
 
 @app.post("/tryon")
 async def try_on(person: UploadFile = File(...), garment: UploadFile = File(...)):
@@ -32,14 +32,14 @@ async def try_on(person: UploadFile = File(...), garment: UploadFile = File(...)
 
         client = Client("Kwai-Kolors/Kolors-Virtual-Try-On")
         
-        # التعديل النهائي والمؤكد بإذن الله:
-        # إرسال 4 مدخلات فقط بالترتيب (شخص، لبس، seed، موافقة)
-        # وبدون استخدام api_name، فقط fn_index=0
+        # التعديل "الجوكر": بعت الصورتين في الأول وبعدين 3 قيم افتراضية
+        # ده الترتيب الأكثر شيوعاً لموديلات الـ Try-on اللي بتطلع Index Error
         result = client.predict(
-            handle_file(person_path),
-            handle_file(garment_path),
-            0,
-            True,
+            handle_file(person_path),   # الشخص
+            handle_file(garment_path),  # اللبس
+            handle_file(person_path),   # الماسك (بنبعت صورة الشخص كبديل)
+            0,                          # Seed
+            True,                       # Agreement
             fn_index=0
         )
 
@@ -51,4 +51,5 @@ async def try_on(person: UploadFile = File(...), garment: UploadFile = File(...)
     except Exception as e:
         if os.path.exists(person_path): os.remove(person_path)
         if os.path.exists(garment_path): os.remove(garment_path)
+        # هنرجع رسالة الخطأ كاملة عشان لو فشلت نعرف السبب فين بالظبط
         return {"status": "error", "message": str(e)}
