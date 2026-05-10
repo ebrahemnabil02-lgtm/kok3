@@ -7,7 +7,7 @@ import uuid
 
 app = FastAPI()
 
-# إعدادات CORS للسماح بالوصول من أي مكان (مهم جداً للـ Frontend)
+# إعدادات CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,7 +21,7 @@ def home():
 
 @app.post("/tryon")
 async def try_on(person: UploadFile = File(...), garment: UploadFile = File(...)):
-    # إنشاء أسماء فريدة للملفات باستخدام UUID لتجنب التداخل
+    # إنشاء أسماء فريدة للملفات
     session_id = str(uuid.uuid4())
     person_path = f"person_{session_id}.jpg"
     garment_path = f"garment_{session_id}.jpg"
@@ -33,36 +33,26 @@ async def try_on(person: UploadFile = File(...), garment: UploadFile = File(...)
         with open(garment_path, "wb") as f:
             shutil.copyfileobj(garment.file, f)
 
-        # الاتصال بموديل Kolors على Hugging Face
+        # الاتصال بموديل Kolors
         client = Client("Kwai-Kolors/Kolors-Virtual-Try-On")
         
-        # التعديل الأكيد: استخدام fn_index=0 بدلاً من api_name
-        # هذا يتخطى مشكلة تغير أسماء الوظائف في الموديل
+        # التعديل الحاسم: إرسال القيم بالترتيب (Positional Arguments)
+        # الترتيب: صورة الشخص، صورة اللبس، الـ Seed، الموافقة على الشروط
         result = client.predict(
-            person_img=handle_file(person_path),
-            garment_img=handle_file(garment_path),
-            seed=0,
-            is_checked=True,
+            handle_file(person_path), 
+            handle_file(garment_path),
+            0,     # seed
+            True,  # is_checked
             fn_index=0
         )
 
-        # حذف الملفات المؤقتة بعد المعالجة لتوفير مساحة السيرفر
+        # تنظيف الملفات المؤقتة
         if os.path.exists(person_path): os.remove(person_path)
         if os.path.exists(garment_path): os.remove(garment_path)
 
-        # إرجاع النتيجة (غالباً ما تكون رابط الصورة النهائية)
         return {"status": "success", "result": result}
 
     except Exception as e:
-        # تنظيف الملفات في حالة حدوث خطأ أيضاً
         if os.path.exists(person_path): os.remove(person_path)
         if os.path.exists(garment_path): os.remove(garment_path)
-        
-        print(f"Detailed Error: {str(e)}") # ستظهر في Railway Logs
         return {"status": "error", "message": str(e)}
-
-# تأكد من أن ملف requirements.txt يحتوي على:
-# fastapi
-# uvicorn
-# gradio_client
-# python-multipart
